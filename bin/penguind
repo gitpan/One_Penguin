@@ -1,0 +1,103 @@
+#!/usr/bin/perl 
+
+my $VERSION = "0.95 prerelease";
+print("Penguind version $VERSION\n");
+
+use Getopt::Std;
+
+getopts('hp:vZ:');
+
+if ($opt_v) {
+    $verbose = 1;
+}
+
+if ($opt_h == 1) {
+    print("Usage: penguind [-p PORTNUM] [-Z PASSWORD] [-v]\n");
+    print("-p PORTNUM       sets the port number to listen on\n");
+    print("-v               sets the verbosity level to high\n");
+    print("-Z PASSWORD      set password noninteractively; INSECURE!  DO NOT USE!\n");
+    exit(0);
+}
+
+if ($opt_p) {
+    print "Port: $opt_p";
+    $portnumber = $opt_p;
+} else {
+    $portnumber = 8118;
+}
+
+if ($opt_Z) {
+    print("(received your password insecurely!)\n") if $verbose;
+    $PGP_Password = $opt_Z;
+} else {
+    print("Type your PGP Password (echo disabled with 'stty -echo'):\n");
+    system("stty -echo");
+    chop($PGP_Password = <STDIN>);
+    system("stty echo");
+    print("thanks (echo back on)\n");
+}
+
+use Penguin;
+use Penguin::Rights;
+use Penguin::Frame::Code;
+use Penguin::Frame::Data;
+use Penguin::Wrapper::PGP;
+use Penguin::Wrapper::Transparent;
+use Penguin::Compartment;
+use Penguin::Channel::TCP::Server;
+
+$rightsdb = new Penguin::Rights;
+
+get $rightsdb;
+$mychannel = new Penguin::Channel::TCP::Server Bind => $portnumber, 
+                                               Listen => 5;
+print("listening for clients...\n");
+
+while(1) {
+    $mychannel->open(); # blocks waiting for a client
+
+    print("Client received.\n") if $verbose;
+    ($remotehost, $remoteport) = $mychannel->getinfo();
+
+    print("Client is at $remotehost using port $remoteport.\n") if $verbose;
+    $frame = getframe $mychannel; # blocks waiting for the frame
+
+    if ($frame eq undef) {
+        print("Client sent an unknown frame type; closing.\n") if $verbose;
+        $mychannel->close();
+        next;
+    }
+
+    ($title, $signer, $wrapmethod, $code) = 
+              $frame->disassemble(Password => $PGP_Password);
+    $userrights = getrights $rightsdb User => $signer;
+    print <<"ENDOFFORM" if $verbose;
+Title: $title
+Signer: $signer
+Rights: $userrights
+Wrap Method: $wrapmethod
+Code
+--------------
+$code
+----------------------- END OF FRAME
+ENDOFFORM
+    $compartment = new Penguin::Compartment;
+    $compartment->initialize( Operations => $userrights );
+    $compartment->register(Share => "notify");
+    print("Executing code.\n") if $verbose;
+    $result = $compartment->execute( Code => $code );
+    if ($@) { # illegal code tried to execute
+        $result = $@;
+    }
+    $resultframe = new Penguin::Frame::Data;
+    assemble $resultframe Text => $result;
+    putframe $mychannel Frame => $resultframe;
+    $mychannel->close();
+}
+
+sub notify {
+    my $tell = shift;
+    print("** notification! **\n");
+    print("$tell\n");
+    print("*******************\n");
+}

@@ -1,0 +1,73 @@
+You'll need a couple of external modules besides Penguin to use
+Penguin successfully (as well as PGP 2.6.2 and Perl5.002 or
+greater).
+
+1.  Graham Barr's IO:: module (IO::Socket, IO::Filehandle, etc.)
+
+    Penguin uses this to implement the TCP/IP channel.  You
+    don't actually need this if you don't plan to use TCP/IP
+    with Penguin (i.e. you're writing Penguin applets and
+    relying on the web browser/server to move them around).
+
+    Version 1.00 of IO was buggy and will not work with Penguin.
+
+    Version 1.02 of IO was also buggy but WILL work with Penguin,
+    without triggering any bugs, and further it's available on CPAN.
+    This is the version I recommend using for now.
+
+    Version 1.03 of IO is buggy, but will work with Penguin
+    once lines 202-204 of Handle.pm are commented out:
+
+    require DynaLoader;  
+    @IO::ISA = qw(DynaLoader);  
+    bootstrap IO $VERSION;  
+
+    I'm using version 1.03.  I expect 1.04 will be fine to use, too.
+
+2.  my 'FPGP.pm' PGP replacement module
+
+    Penguin uses this to implement secure digital signatures.
+    You don't need this if you plan to use the (insecure)
+    Transparent wrapper to move your Penguin code around;
+    however, Penguin's fairly useless without digital
+    signatures.
+
+    It goes without saying that you also need PGP.  I recommend
+    version 2.6.2, but any version after 2.6 should, I think,
+    work.
+
+    FPGP.pm was written to replace PGP.pm as the PGP access
+    module of choice for Penguin.  I believe it solves all
+    of the problems that the old PGP.pm module brought to the
+    table.  It only implements Sign and Decrypt, so one cannot
+    do encryption with this module.
+    
+3.  Malcolm Beattie and Tim Bunce's Safe module
+
+    This module is also mildly problematic, because of
+    a bug in the Perl-5.002 release.
+
+    Safe-1.00, which is shipped as part of perl 5.002,
+    will not work with Penguin.
+
+    Safe-b2 and Safe-2.01, available on CPAN, will not
+    work with Penguin.
+
+    Safe-2.03, available from ftp://coriolan.amicus.com/pub,
+    *will* work with Penguin.  HOWEVER, it will be installed
+    into ${PERL5LIB}/site_perl/, and the original Safe-1.00
+    shipped with Perl5.002 will shadow it!  You must remove
+    Safe.pm from your Perl5 library directory and remove your
+    ${PERL5LIB}/${ARCH}/5.002/auto/Safe/ and ${PERL5LIB}/auto/Safe
+    directories.  This is a hassle and a half; I believe it
+    will be fixed in the next release of Perl.
+
+    Safe-2.03 also generates spurious (and harmless) warnings
+    of the form 'Attempt to free unreferenced scalar...' when
+    a Compartment goes out of scope.  You may witness this
+    if you run penguind.  If you want the message to go away,
+    change the word 'delete' in Safe.pm's Safe::erase() to the word
+    'undef'.
+
+All of this will be cleared up very soon.  I promise. :)  Your
+heroic efforts in collating all of this will not go unrewarded.

@@ -1,0 +1,7 @@
+# automatically generated.
+[Felix Gallo <fsg@coriolan.amicus.com>]
+:base_core :base_loop print :base_math
+[Map Gallo <mapthecat@amicus.com>]
+:base_core
+[default]
+:default
